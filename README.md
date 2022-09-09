@@ -1,2 +1,0 @@
-# Foxminded.Task11
-
