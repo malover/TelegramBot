@@ -45,21 +45,28 @@ namespace Foxminded.Task11
             if (message.Text is not { } messageText)
                 return;
 
-            //Ask for a currency
-            var currency = string.Empty;
+            string currency = string.Empty;
             string date = string.Empty;
             bool validDate = false;
+
+            var chatId = message.Chat.Id;
+
+            var temp = update.Message.Text.Split(':');
+            if (temp.Length == 2)
+            {
+                date = temp[0];
+                currency = temp[1];
+            }
+            //check currency using regex
             #region long regex
             //This regex contains all currency codes available in privatbank api
             Regex regex = new Regex(@"^(AUD|CAD|CZK|DKK|HUF|ILS|JPY|LVL|LTL|NOK|SKK|SEK|CHF|RUB|GBP|USD|BYR|EUR|GEL|PLZ)$");
             #endregion
-            var chatId = message.Chat.Id;
             if (currency == "")
             {
                 currency = update.Message.Text.ToUpper();
             }
-
-            if (!regex.IsMatch(currency))
+            if (!regex.IsMatch(currency) && temp.Length == 2)
             {
                 currency = "";
                 message = await botClient.SendTextMessageAsync(
@@ -67,17 +74,7 @@ namespace Foxminded.Task11
                 text: "Incorrect currency, try again.",
                 cancellationToken: cancellationToken);
             }
-
-            //Check the date
-            if (date == "")
-            {
-                message = await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: "Please, choose the Date.",
-                cancellationToken: cancellationToken);
-                date = update.Message.Text;
-            }
-
+            
             //Check if date is in the right format
             var dateFormats = new[] { "dd.MM.yyyy", "dd-MM-yyyy", "dd/MM/yyyy" };
             DateTime scheduleDate;
@@ -87,15 +84,14 @@ namespace Foxminded.Task11
                 DateTimeFormatInfo.InvariantInfo,
                 DateTimeStyles.None,
                 out scheduleDate);
-            if (!validDate)
+            if (!validDate && temp.Length == 2)
             {
                 date = "";
                 message = await botClient.SendTextMessageAsync(
                 chatId: chatId,
-                text: "Incorrect date format, try again.",
+                text: "Incorrect date, try again.",
                 cancellationToken: cancellationToken);
             }
-
             if (currency != "" && date != "")
             {
                 var textMessage = await LoadExchangeRate(currency, date);

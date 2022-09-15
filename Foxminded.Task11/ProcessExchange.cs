@@ -14,9 +14,9 @@ namespace Foxminded.Task11
             string url = "";
             url = $"https://api.privatbank.ua/p24api/exchange_rates?json&date={date}";
 
-            var streamTask = ApiHelper.ApiClient.GetStreamAsync("https://api.privatbank.ua/p24api/exchange_rates?json&date=01.12.2014");
+            var streamTask = ApiHelper.ApiClient.GetStreamAsync(url);
             var deserialized = await JsonSerializer.DeserializeAsync<Root>(await streamTask);
-            var rate = deserialized.ExchangeModel.FirstOrDefault(r => r.Currency == "currency");
+            var rate = deserialized.ExchangeModel.FirstOrDefault(r => r.Currency == currency);
             return rate;
         }
     }
