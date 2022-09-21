@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -11,8 +12,9 @@ namespace Foxminded.Task11
 {
     public class Program
     {
-        public static async Task Main(string[] args)
+        public static void Main(string[] args)
         {
+
             #region Telegram_bot initialization
             var botClient = new TelegramBotClient("5712033208:AAEhtutzGvKST9Tff_nxmrAS34ARReWQmBw");
 
@@ -22,6 +24,7 @@ namespace Foxminded.Task11
             {
                 AllowedUpdates = Array.Empty<UpdateType>()
             };
+            botClient.GetUpdatesAsync(offset: -1);
             botClient.StartReceiving(
                 updateHandler: HandleUpdateAsync,
                 pollingErrorHandler: HandlePollingErrorAsync,
@@ -29,8 +32,9 @@ namespace Foxminded.Task11
                 cancellationToken: cts.Token
                 );
             #endregion
-
+            //Api client initialization
             ApiHelper.InitializeClient();
+
 
             Console.ReadLine();
             cts.Cancel();
@@ -45,61 +49,259 @@ namespace Foxminded.Task11
             if (message.Text is not { } messageText)
                 return;
 
-            string currency = string.Empty;
-            string date = string.Empty;
-            bool validDate = false;
+            #region long regex
+            //This regex contains all currency codes available in privatbank api
+            Regex regexCurrency = new Regex(@"^(AUD|CAD|CZK|DKK|HUF|ILS|JPY|LVL|LTL|NOK|SKK|SEK|CHF|GBP|USD|BYR|EUR|GEL|PLZ)$");
+            #endregion
+            Dictionary<string, string> month = new Dictionary<string, string>()
+            {
+                {"January", "01" }, {"February", "02"}, {"March", "03"}, {"April", "04"},
+                {"May", "05" }, {"June", "06"}, {"July", "07"}, {"August", "08"},
+                {"September", "09" }, {"October", "10"}, {"November", "11"}, {"December", "12"},
+            };
 
             var chatId = message.Chat.Id;
 
-            var temp = update.Message.Text.Split(':');
-            if (temp.Length == 2)
-            {
-                date = temp[0];
-                currency = temp[1];
-            }
-            //check currency using regex
-            #region long regex
-            //This regex contains all currency codes available in privatbank api
-            Regex regex = new Regex(@"^(AUD|CAD|CZK|DKK|HUF|ILS|JPY|LVL|LTL|NOK|SKK|SEK|CHF|RUB|GBP|USD|BYR|EUR|GEL|PLZ)$");
-            #endregion
-            if (currency == "")
-            {
-                currency = update.Message.Text.ToUpper();
-            }
-            if (!regex.IsMatch(currency) && temp.Length == 2)
-            {
-                currency = "";
-                message = await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: "Incorrect currency, try again.",
-                cancellationToken: cancellationToken);
-            }
-            
-            //Check if date is in the right format
-            var dateFormats = new[] { "dd.MM.yyyy", "dd-MM-yyyy", "dd/MM/yyyy" };
-            DateTime scheduleDate;
-            validDate = DateTime.TryParseExact(
-                date,
-                dateFormats,
-                DateTimeFormatInfo.InvariantInfo,
-                DateTimeStyles.None,
-                out scheduleDate);
-            if (!validDate && temp.Length == 2)
-            {
-                date = "";
-                message = await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: "Incorrect date, try again.",
-                cancellationToken: cancellationToken);
-            }
-            if (currency != "" && date != "")
-            {
-                var textMessage = await LoadExchangeRate(currency, date);
+            int temp = 0;
+            int.TryParse(message.Text, out temp);
 
-                message = await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: textMessage,
-                cancellationToken: cancellationToken);
+            if (message.Text == "RUB")
+            {
+                Message sentMessage = await botClient.SendTextMessageAsync(
+                   chatId: chatId,
+                   text: "You better not joke about it again, I have your id.",
+                   replyMarkup: new ReplyKeyboardRemove(),
+                   cancellationToken: cancellationToken);
+            }
+
+            //Set currency
+            else if (!regexCurrency.IsMatch(message.Text) && temp == 0 && !month.ContainsKey(message.Text))
+            {
+                System.IO.File.Create(GetStreamPath()).Close();
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+                {
+                 new KeyboardButton[]{ "AUD", "CAD", "CZK", "DKK", "HUF" },
+                 new KeyboardButton[]{ "ILS", "JPY", "LVL", "LTL", "NOK" },
+                 new KeyboardButton[]{ "SKK", "SEK", "CHF", "RUB", "GBP"  },
+                 new KeyboardButton[]{ "USD", "BYR", "EUR", "GEL", "PLZ"  },
+                })
+                {
+                    ResizeKeyboard = true
+                };
+
+                Message sentMessage = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "This bot was only made for the currency exchange, let's pretend, that it is what you wanted." +
+                    "Now you may choose the currency.",
+                    replyMarkup: replyKeyboardMarkup,
+                    cancellationToken: cancellationToken);
+            }
+
+            //Set year
+            else if (regexCurrency.IsMatch(message.Text))
+            {
+                StreamWriter file = new StreamWriter(GetStreamPath(), true, Encoding.Default);
+                file.WriteLine(message.Text);
+                file.Close();
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+                {
+                 new KeyboardButton[]{ "2014", "2015", "2016"},
+                 new KeyboardButton[]{ "2017", "2018", "2019"},
+                 new KeyboardButton[]{ "2020", "2021", "2022"},
+                })
+                {
+                    ResizeKeyboard = true
+                };
+
+                Message sentMessage = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Choose a year you want to check",
+                    replyMarkup: replyKeyboardMarkup,
+                    cancellationToken: cancellationToken);
+            }
+
+            //Set month
+            else if (temp >= 2014 && temp <= 2022)
+            {
+                StreamWriter file = new StreamWriter(GetStreamPath(), true, Encoding.Default);
+                file.Write(message.Text + ".");
+                file.Close();
+                #region Layount for the current year
+                ReplyKeyboardMarkup layout2022 = new(new[]
+                {
+                 new KeyboardButton[]{ "January", "February", "March", "April"},
+                 new KeyboardButton[]{ "April", "June", "July", "August"},
+                 new KeyboardButton[]{ "September"},
+                })
+                {
+                    ResizeKeyboard = false
+                };
+                #endregion
+
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+                {
+                 new KeyboardButton[]{ "January", "February", "March", "April"},
+                 new KeyboardButton[]{ "April", "June", "July", "August"},
+                 new KeyboardButton[]{ "September", "October", "November", "December"},
+                })
+                {
+                    ResizeKeyboard = true
+                };
+
+                if (temp == 2022)
+                {
+                    replyKeyboardMarkup = layout2022;
+                }
+
+                Message sentMessage = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Choose a month you want to check",
+                    replyMarkup: replyKeyboardMarkup,
+                    cancellationToken: cancellationToken);
+            }
+            //Set day
+            else if (month.ContainsKey(message.Text))
+            {
+                StreamWriter file = new StreamWriter(GetStreamPath(), true, Encoding.Default);
+                string monthUsingDigit = month[message.Text];
+
+                file.Write(monthUsingDigit + ".");
+                file.Close();
+
+                #region Different layouts for months
+                ReplyKeyboardMarkup layout31 = new(new[]
+                {
+                 new KeyboardButton[]{ "01", "02", "03", "04"},
+                 new KeyboardButton[]{ "05", "06", "07", "08"},
+                 new KeyboardButton[]{ "09", "10", "11", "12"},
+                 new KeyboardButton[]{ "13", "14", "15", "16"},
+                 new KeyboardButton[]{ "17", "18", "19", "20"},
+                 new KeyboardButton[]{ "21", "22", "23", "24"},
+                 new KeyboardButton[]{ "25", "26", "27", "28"},
+                 new KeyboardButton[]{ "29", "30", "31"},
+                })
+                {
+                    ResizeKeyboard = false
+                };
+
+                ReplyKeyboardMarkup layout30 = new(new[]
+                {
+                 new KeyboardButton[]{ "01", "02", "03", "04"},
+                 new KeyboardButton[]{ "05", "06", "07", "08"},
+                 new KeyboardButton[]{ "09", "10", "11", "12"},
+                 new KeyboardButton[]{ "13", "14", "15", "16"},
+                 new KeyboardButton[]{ "17", "18", "19", "20"},
+                 new KeyboardButton[]{ "21", "22", "23", "24"},
+                 new KeyboardButton[]{ "25", "26", "27", "28"},
+                 new KeyboardButton[]{ "29", "30"},
+                })
+                {
+                    ResizeKeyboard = false
+                };
+
+                ReplyKeyboardMarkup layout28 = new(new[]
+                {
+                 new KeyboardButton[]{ "01", "02", "03", "04"},
+                 new KeyboardButton[]{ "05", "06", "07", "08"},
+                 new KeyboardButton[]{ "09", "10", "11", "12"},
+                 new KeyboardButton[]{ "13", "14", "15", "16"},
+                 new KeyboardButton[]{ "17", "18", "19", "20"},
+                 new KeyboardButton[]{ "21", "22", "23", "24"},
+                 new KeyboardButton[]{ "25", "26", "27", "28"},
+                })
+                {
+                    ResizeKeyboard = false
+                };
+
+                ReplyKeyboardMarkup layout29 = new(new[]
+                {
+                 new KeyboardButton[]{ "01", "02", "03", "04"},
+                 new KeyboardButton[]{ "05", "06", "07", "08"},
+                 new KeyboardButton[]{ "09", "10", "11", "12"},
+                 new KeyboardButton[]{ "13", "14", "15", "16"},
+                 new KeyboardButton[]{ "17", "18", "19", "20"},
+                 new KeyboardButton[]{ "21", "22", "23", "24"},
+                 new KeyboardButton[]{ "25", "26", "27", "28"},
+                 new KeyboardButton[]{ "29"},
+                })
+                {
+                    ResizeKeyboard = false
+                };
+                #endregion
+                //Temporal epty layout
+                ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(new KeyboardButton[] { })
+                {
+                    ResizeKeyboard = false
+                };
+                if (message.Text == "November" || message.Text == "September" || message.Text == "June" || message.Text == "April")
+                {
+                    replyKeyboardMarkup = layout30;
+                }
+                else if (message.Text == "February")
+                {
+                    replyKeyboardMarkup = layout28;
+                }
+                else
+                {
+                    replyKeyboardMarkup = layout31;
+                }
+
+
+                Message sentMessage = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Choose a day you want to check",
+                    replyMarkup: replyKeyboardMarkup,
+                    cancellationToken: cancellationToken);
+            }
+            else if (temp >= 1 && temp <= 31)
+            {
+                StreamWriter fileWrite = new StreamWriter(GetStreamPath(), true, Encoding.Default);
+                fileWrite.Write(message.Text);
+                fileWrite.Close();
+
+                string[] lines = System.IO.File.ReadAllLines(GetStreamPath());
+                string currency = lines[0];
+                bool validDate = false;
+                string date = lines[1];
+
+                //Check if date is in the right format
+                //But first convert in into the appropriate format for privatbank API
+                date = ConvertDateTimeFormat(date, "yyyy.MM.dd", "dd.MM.yyyy", null);
+                var dateFormats = new[] { "dd.MM.yyyy", "dd-MM-yyyy", "dd/MM/yyyy" };
+                DateTime scheduleDate;
+                validDate = DateTime.TryParseExact(
+                    date,
+                    dateFormats,
+                    DateTimeFormatInfo.InvariantInfo,
+                    DateTimeStyles.None,
+                            out scheduleDate);
+
+                if (validDate)
+                {
+                    var textMessage = string.Empty;
+                    try
+                    {
+                        textMessage = await LoadExchangeRate(currency, date);
+                    }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+
+                    message = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: textMessage,
+                    replyMarkup: new ReplyKeyboardRemove(),
+                                cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    message = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Something went wrong, you should try again. Don't forget, that bot can't see the future, so enter the date in the past.",
+                    replyMarkup: new ReplyKeyboardRemove(),
+                    cancellationToken: cancellationToken);
+                }
             }
         }
         public static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -116,6 +318,27 @@ namespace Foxminded.Task11
         }
         #endregion
 
+        public static string GetStreamPath()
+        {
+            #region Create our Database folder and setup the file path
+            //Get the current solution bin directory
+            string currPath = Directory.GetCurrentDirectory();
+            //Get the current solution root directory
+            int index = currPath.IndexOf("bin");
+            string folder = currPath.Substring(0, index);
+            //Create the path for our database folder
+            string pathString = Path.Combine(folder, "DataBase");
+            //Create the database directory at the specified path
+            Directory.CreateDirectory(pathString);
+            //Create the path for the database txt file
+            return pathString = Path.Combine(pathString, "test.txt");
+            #endregion
+        }
+        public static string ConvertDateTimeFormat(string input, string inputFormat, string outputFormat, IFormatProvider culture)
+        {
+            DateTime dateTime = DateTime.ParseExact(input, inputFormat, culture);
+            return dateTime.ToString(outputFormat, culture);
+        }
         public static async Task<string> LoadExchangeRate(string currency, string date)
         {
             var rate = await ProcessExchange.LoadExchange(currency, date);
