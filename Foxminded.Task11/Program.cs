@@ -77,7 +77,17 @@ namespace Foxminded.Task11
             //Set currency
             else if (!regexCurrency.IsMatch(message.Text) && temp == 0 && !month.ContainsKey(message.Text))
             {
-                System.IO.File.Create(GetStreamPath()).Close();
+                var userId = message.From.Id.ToString();
+
+                if (MessageHolder.Dictionary.ContainsKey(userId))
+                {
+                    MessageHolder.Dictionary[userId] = new List<string>();
+                }
+                else
+                {
+                    MessageHolder.Dictionary.TryAdd(userId, new List<string>());
+                }
+
                 ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
                 {
                  new KeyboardButton[]{ "AUD", "CAD", "CZK", "DKK", "HUF" },
@@ -99,10 +109,22 @@ namespace Foxminded.Task11
 
             //Set year
             else if (regexCurrency.IsMatch(message.Text))
-            {
-                StreamWriter file = new StreamWriter(GetStreamPath(), true, Encoding.Default);
-                file.WriteLine(message.Text);
-                file.Close();
+            {               
+                var userId = message.From.Id.ToString();
+
+                if (MessageHolder.Dictionary.ContainsKey(userId))
+                {
+                    MessageHolder.Dictionary[userId].Add(message.Text);
+                }
+                else
+                {
+                    Message errorMessage = await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Something went wrong, please, try again.",
+                        replyMarkup: new ReplyKeyboardRemove(),
+                        cancellationToken: cancellationToken);
+                }
+
                 ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
                 {
                  new KeyboardButton[]{ "2014", "2015", "2016"},
@@ -122,10 +144,23 @@ namespace Foxminded.Task11
 
             //Set month
             else if (temp >= 2014 && temp <= 2022)
-            {
-                StreamWriter file = new StreamWriter(GetStreamPath(), true, Encoding.Default);
-                file.Write(message.Text + ".");
-                file.Close();
+            {               
+                var userId = message.From.Id.ToString();
+
+                if (MessageHolder.Dictionary.ContainsKey(userId))
+                {
+                    MessageHolder.Dictionary[userId].Add(message.Text); 
+                }
+                else
+                {
+                    Message errorMessage = await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Something went wrong, please, try again.",
+                        replyMarkup: new ReplyKeyboardRemove(),
+                        cancellationToken: cancellationToken);
+                }
+
+
                 #region Layount for the current year
                 ReplyKeyboardMarkup layout2022 = new(new[]
                 {
@@ -161,12 +196,22 @@ namespace Foxminded.Task11
             }
             //Set day
             else if (month.ContainsKey(message.Text))
-            {
-                StreamWriter file = new StreamWriter(GetStreamPath(), true, Encoding.Default);
+            {               
+                var userId = message.From.Id.ToString();
                 string monthUsingDigit = month[message.Text];
 
-                file.Write(monthUsingDigit + ".");
-                file.Close();
+                if (MessageHolder.Dictionary.ContainsKey(userId))
+                {
+                    MessageHolder.Dictionary[userId].Add(monthUsingDigit);
+                }
+                else
+                {
+                    Message errorMessage = await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Something went wrong, please, try again.",
+                        replyMarkup: new ReplyKeyboardRemove(),
+                        cancellationToken: cancellationToken);
+                }
 
                 #region Different layouts for months
                 ReplyKeyboardMarkup layout31 = new(new[]
@@ -255,14 +300,26 @@ namespace Foxminded.Task11
             }
             else if (temp >= 1 && temp <= 31)
             {
-                StreamWriter fileWrite = new StreamWriter(GetStreamPath(), true, Encoding.Default);
-                fileWrite.Write(message.Text);
-                fileWrite.Close();
+                var userId = message.From.Id.ToString();
 
-                string[] lines = System.IO.File.ReadAllLines(GetStreamPath());
-                string currency = lines[0];
+                if (MessageHolder.Dictionary.ContainsKey(userId))
+                {
+                    MessageHolder.Dictionary[userId].Add(message.Text);
+                }
+                else
+                {
+                    Message errorMessage = await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Something went wrong, please, try again.",
+                        replyMarkup: new ReplyKeyboardRemove(),
+                        cancellationToken: cancellationToken);
+                }
+
                 bool validDate = false;
-                string date = lines[1];
+                var messages = MessageHolder.Dictionary[userId];
+                var currency = messages[0];
+                messages.RemoveAt(0);
+                string date = String.Join('.', messages);
 
                 //Check if date is in the right format
                 //But first convert in into the appropriate format for privatbank API
@@ -283,7 +340,7 @@ namespace Foxminded.Task11
                     {
                         textMessage = await LoadExchangeRate(currency, date);
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
                         Console.WriteLine(ex.Message);
                     }
@@ -317,23 +374,6 @@ namespace Foxminded.Task11
             return Task.CompletedTask;
         }
         #endregion
-
-        public static string GetStreamPath()
-        {
-            #region Create our Database folder and setup the file path
-            //Get the current solution bin directory
-            string currPath = Directory.GetCurrentDirectory();
-            //Get the current solution root directory
-            int index = currPath.IndexOf("bin");
-            string folder = currPath.Substring(0, index);
-            //Create the path for our database folder
-            string pathString = Path.Combine(folder, "DataBase");
-            //Create the database directory at the specified path
-            Directory.CreateDirectory(pathString);
-            //Create the path for the database txt file
-            return pathString = Path.Combine(pathString, "test.txt");
-            #endregion
-        }
         public static string ConvertDateTimeFormat(string input, string inputFormat, string outputFormat, IFormatProvider culture)
         {
             DateTime dateTime = DateTime.ParseExact(input, inputFormat, culture);
