@@ -1,5 +1,7 @@
-﻿using System.Globalization;
-using System.Text;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -12,11 +14,18 @@ namespace Foxminded.Task11
 {
     public class Program
     {
+
         public static void Main(string[] args)
         {
+            #region Adding appsettings
+            using IHost host = Host.CreateDefaultBuilder(args).Build();
+            IConfiguration config = host.Services.GetRequiredService<IConfiguration>();
+            #endregion
 
             #region Telegram_bot initialization
-            var botClient = new TelegramBotClient("5712033208:AAEhtutzGvKST9Tff_nxmrAS34ARReWQmBw");
+
+            string key = config.GetValue<string>("Key:BotToken");// reading key from appsettings.json
+            var botClient = new TelegramBotClient(key);
 
             using var cts = new CancellationTokenSource();
 
@@ -67,6 +76,9 @@ namespace Foxminded.Task11
 
             if (message.Text == "RUB")
             {
+                var userId = message.From.Id.ToString();
+                MessageHolder.Dictionary.Remove(userId, out List<string> retrievedValue);
+
                 Message sentMessage = await botClient.SendTextMessageAsync(
                    chatId: chatId,
                    text: "You better not joke about it again, I have your id.",
@@ -328,7 +340,6 @@ namespace Foxminded.Task11
                         Console.WriteLine(ex.Message);
                     }
 
-                    MessageHolder.Dictionary.Remove(userId, out List<string> retrievedValue);
                     message = await botClient.SendTextMessageAsync(
                     chatId: chatId,
                     text: textMessage,
