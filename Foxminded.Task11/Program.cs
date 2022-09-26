@@ -55,9 +55,9 @@ namespace Foxminded.Task11
             #endregion
             Dictionary<string, string> month = new Dictionary<string, string>()
             {
-                {"January", "01" }, {"February", "02"}, {"March", "03"}, {"April", "04"},
-                {"May", "05" }, {"June", "06"}, {"July", "07"}, {"August", "08"},
-                {"September", "09" }, {"October", "10"}, {"November", "11"}, {"December", "12"},
+                {"Jan", "01" }, {"Feb", "02"}, {"Mar", "03"}, {"Apr", "04"},
+                {"May", "05" }, {"Jun", "06"}, {"Jul", "07"}, {"Aug", "08"},
+                {"Sep", "09" }, {"Oct", "10"}, {"Nov", "11"}, {"Dec", "12"},
             };
 
             var chatId = message.Chat.Id;
@@ -75,18 +75,11 @@ namespace Foxminded.Task11
             }
 
             //Set currency
-            else if (!regexCurrency.IsMatch(message.Text) && temp == 0 && !month.ContainsKey(message.Text))
+            else if (!MessageHolder.Dictionary.ContainsKey(message.From.Id.ToString()))
             {
                 var userId = message.From.Id.ToString();
 
-                if (MessageHolder.Dictionary.ContainsKey(userId))
-                {
-                    MessageHolder.Dictionary[userId] = new List<string>();
-                }
-                else
-                {
-                    MessageHolder.Dictionary.TryAdd(userId, new List<string>());
-                }
+                MessageHolder.Dictionary.TryAdd(userId, new List<string>());
 
                 ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
                 {
@@ -109,28 +102,46 @@ namespace Foxminded.Task11
 
             //Set year
             else if (regexCurrency.IsMatch(message.Text))
-            {               
+            {
                 var userId = message.From.Id.ToString();
 
-                if (MessageHolder.Dictionary.ContainsKey(userId))
-                {
-                    MessageHolder.Dictionary[userId].Add(message.Text);
-                }
-                else
-                {
-                    Message errorMessage = await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Something went wrong, please, try again.",
-                        replyMarkup: new ReplyKeyboardRemove(),
-                        cancellationToken: cancellationToken);
-                }
+                MessageHolder.Dictionary[userId].Add(message.Text);
 
-                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+                int earliestPossibleYear = 2014;
+                int currentYear = DateTime.Today.Year;
+                int rows = ((currentYear - earliestPossibleYear) + 3) / 3; // 3 is the number of buttons in row
+                int cols = 3;
+                KeyboardButton[][] universalYearLayout = new KeyboardButton[rows][];
+
+                #region Universal layout for year
+                for (int i = 0; i < rows; i++)
                 {
-                 new KeyboardButton[]{ "2014", "2015", "2016"},
-                 new KeyboardButton[]{ "2017", "2018", "2019"},
-                 new KeyboardButton[]{ "2020", "2021", "2022"},
-                })
+                    for (int j = 0; j < cols; j++)
+                    {
+                        if (universalYearLayout[i] is null)
+                        {
+                            if ((currentYear - earliestPossibleYear) + 1 < 3)
+                            {
+                                universalYearLayout[i] = new KeyboardButton[(currentYear - earliestPossibleYear)];
+                            }
+                            else
+                            {
+                                universalYearLayout[i] = new KeyboardButton[3];
+                            }
+                        }
+                        if (earliestPossibleYear <= currentYear)
+                        {
+                            universalYearLayout[i][j] = earliestPossibleYear.ToString();
+                            earliestPossibleYear++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                #endregion
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(universalYearLayout)
                 {
                     ResizeKeyboard = true
                 };
@@ -143,50 +154,67 @@ namespace Foxminded.Task11
             }
 
             //Set month
-            else if (temp >= 2014 && temp <= 2022)
-            {               
+            else if (temp >= 2014 && temp <= DateTime.Today.Year)
+            {
                 var userId = message.From.Id.ToString();
 
-                if (MessageHolder.Dictionary.ContainsKey(userId))
+                MessageHolder.Dictionary[userId].Add(message.Text);
+
+                #region Create univeral layout for months
+                //Set an array of a full 12 month
+                var monthInYear = new List<string>
+                    {"Jan", "Feb", "Mar",
+                     "Apr", "May", "Jun",
+                     "Jul", "Aug", "Sep",
+                     "Oct", "Nov", "Dec"};
+                //If user chose a current year, set an array up to the current month
+                if (temp == DateTime.Today.Year)
                 {
-                    MessageHolder.Dictionary[userId].Add(message.Text); 
+                    monthInYear = new[]
+                    {"Jan", "Feb", "Mar",
+                     "Apr", "May", "Jun",
+                     "Jul", "Aug", "Sep",
+                     "Oct", "Nov", "Dec"}
+                        .Take(DateTime.Today.Month)
+                        .ToList();
                 }
-                else
+                //Count the number of button rows, in order to create a universal layout
+                int numberOfRows = (monthInYear.Count + 4 - 1) / 4; // 4 is the number of buttons in row
+                KeyboardButton[][] universalLayout = new KeyboardButton[numberOfRows][];
+
+                //Fill the layout according to the chosen year
+                for (int i = 0; i < numberOfRows; i++)
                 {
-                    Message errorMessage = await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Something went wrong, please, try again.",
-                        replyMarkup: new ReplyKeyboardRemove(),
-                        cancellationToken: cancellationToken);
+                    for (int j = 0; j < 4; j++)
+                    {
+                        if (universalLayout[i] is null)
+                        {
+                            if (monthInYear.Count < 4)
+                            {
+                                universalLayout[i] = new KeyboardButton[monthInYear.Count];
+                            }
+                            else
+                            {
+                                universalLayout[i] = new KeyboardButton[4];
+                            }
+                        }
+                        if (monthInYear.Count > 0)
+                        {
+                            universalLayout[i][j] = monthInYear.ElementAt(0);
+                            monthInYear.RemoveAt(0);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
                 }
 
-
-                #region Layount for the current year
-                ReplyKeyboardMarkup layout2022 = new(new[]
-                {
-                 new KeyboardButton[]{ "January", "February", "March", "April"},
-                 new KeyboardButton[]{ "April", "June", "July", "August"},
-                 new KeyboardButton[]{ "September"},
-                })
-                {
-                    ResizeKeyboard = false
-                };
-                #endregion
-
-                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-                {
-                 new KeyboardButton[]{ "January", "February", "March", "April"},
-                 new KeyboardButton[]{ "April", "June", "July", "August"},
-                 new KeyboardButton[]{ "September", "October", "November", "December"},
-                })
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(universalLayout)
                 {
                     ResizeKeyboard = true
                 };
-
-                if (temp == 2022)
-                {
-                    replyKeyboardMarkup = layout2022;
-                }
+                #endregion
 
                 Message sentMessage = await botClient.SendTextMessageAsync(
                     chatId: chatId,
@@ -196,101 +224,67 @@ namespace Foxminded.Task11
             }
             //Set day
             else if (month.ContainsKey(message.Text))
-            {               
+            {
                 var userId = message.From.Id.ToString();
                 string monthUsingDigit = month[message.Text];
 
-                if (MessageHolder.Dictionary.ContainsKey(userId))
+                MessageHolder.Dictionary[userId].Add(monthUsingDigit);
+
+                #region Create universal layout for days
+                var messages = MessageHolder.Dictionary[userId];
+                //Creating temp year and month variables filling them with the date that were chosen by user,
+                //to cover all possible variants and create a correct layout
+                var tempYear = int.Parse(messages[1]);
+                var tempMonth = int.Parse(monthUsingDigit);
+                int daysInChosenMonth = 0;
+                //Then we have to check if user chose current month, to limit days to today
+                if (DateTime.Today.Year == tempYear && DateTime.Today.Month == tempMonth)
                 {
-                    MessageHolder.Dictionary[userId].Add(monthUsingDigit);
+                    daysInChosenMonth = DateTime.Today.Day;
                 }
                 else
                 {
-                    Message errorMessage = await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Something went wrong, please, try again.",
-                        replyMarkup: new ReplyKeyboardRemove(),
-                        cancellationToken: cancellationToken);
+                    daysInChosenMonth = DateTime.DaysInMonth(tempYear, tempMonth);
                 }
 
-                #region Different layouts for months
-                ReplyKeyboardMarkup layout31 = new(new[]
-                {
-                 new KeyboardButton[]{ "01", "02", "03", "04"},
-                 new KeyboardButton[]{ "05", "06", "07", "08"},
-                 new KeyboardButton[]{ "09", "10", "11", "12"},
-                 new KeyboardButton[]{ "13", "14", "15", "16"},
-                 new KeyboardButton[]{ "17", "18", "19", "20"},
-                 new KeyboardButton[]{ "21", "22", "23", "24"},
-                 new KeyboardButton[]{ "25", "26", "27", "28"},
-                 new KeyboardButton[]{ "29", "30", "31"},
-                })
-                {
-                    ResizeKeyboard = false
-                };
+                int rows = 4; //I want to create a layout with 4 rows 8 buttons max on each
+                int cols = 8;
+                KeyboardButton[][] universalDayLayout = new KeyboardButton[rows][];
 
-                ReplyKeyboardMarkup layout30 = new(new[]
+                //Fill the layout according to the chosen year
+                int day = 1;
+                for (int i = 0; i < rows; i++)
                 {
-                 new KeyboardButton[]{ "01", "02", "03", "04"},
-                 new KeyboardButton[]{ "05", "06", "07", "08"},
-                 new KeyboardButton[]{ "09", "10", "11", "12"},
-                 new KeyboardButton[]{ "13", "14", "15", "16"},
-                 new KeyboardButton[]{ "17", "18", "19", "20"},
-                 new KeyboardButton[]{ "21", "22", "23", "24"},
-                 new KeyboardButton[]{ "25", "26", "27", "28"},
-                 new KeyboardButton[]{ "29", "30"},
-                })
-                {
-                    ResizeKeyboard = false
-                };
+                    for (int j = 0; j < cols; j++)
+                    {
+                        if (universalDayLayout[i] is null)
+                        {
+                            if ((daysInChosenMonth - day) < 8)
+                            {
+                                universalDayLayout[i] = new KeyboardButton[(daysInChosenMonth - day) + 1]; //+1 cause days count is started from 1, not from 0
+                            }
+                            else
+                            {
+                                universalDayLayout[i] = new KeyboardButton[8];
+                            }
+                        }
 
-                ReplyKeyboardMarkup layout28 = new(new[]
+                        if (day <= daysInChosenMonth)
+                        {
+                            universalDayLayout[i][j] = day.ToString();
+                            day++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(universalDayLayout)
                 {
-                 new KeyboardButton[]{ "01", "02", "03", "04"},
-                 new KeyboardButton[]{ "05", "06", "07", "08"},
-                 new KeyboardButton[]{ "09", "10", "11", "12"},
-                 new KeyboardButton[]{ "13", "14", "15", "16"},
-                 new KeyboardButton[]{ "17", "18", "19", "20"},
-                 new KeyboardButton[]{ "21", "22", "23", "24"},
-                 new KeyboardButton[]{ "25", "26", "27", "28"},
-                })
-                {
-                    ResizeKeyboard = false
-                };
-
-                ReplyKeyboardMarkup layout29 = new(new[]
-                {
-                 new KeyboardButton[]{ "01", "02", "03", "04"},
-                 new KeyboardButton[]{ "05", "06", "07", "08"},
-                 new KeyboardButton[]{ "09", "10", "11", "12"},
-                 new KeyboardButton[]{ "13", "14", "15", "16"},
-                 new KeyboardButton[]{ "17", "18", "19", "20"},
-                 new KeyboardButton[]{ "21", "22", "23", "24"},
-                 new KeyboardButton[]{ "25", "26", "27", "28"},
-                 new KeyboardButton[]{ "29"},
-                })
-                {
-                    ResizeKeyboard = false
+                    ResizeKeyboard = true
                 };
                 #endregion
-                //Temporal epty layout
-                ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(new KeyboardButton[] { })
-                {
-                    ResizeKeyboard = false
-                };
-                if (message.Text == "November" || message.Text == "September" || message.Text == "June" || message.Text == "April")
-                {
-                    replyKeyboardMarkup = layout30;
-                }
-                else if (message.Text == "February")
-                {
-                    replyKeyboardMarkup = layout28;
-                }
-                else
-                {
-                    replyKeyboardMarkup = layout31;
-                }
-
 
                 Message sentMessage = await botClient.SendTextMessageAsync(
                     chatId: chatId,
@@ -302,18 +296,7 @@ namespace Foxminded.Task11
             {
                 var userId = message.From.Id.ToString();
 
-                if (MessageHolder.Dictionary.ContainsKey(userId))
-                {
-                    MessageHolder.Dictionary[userId].Add(message.Text);
-                }
-                else
-                {
-                    Message errorMessage = await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Something went wrong, please, try again.",
-                        replyMarkup: new ReplyKeyboardRemove(),
-                        cancellationToken: cancellationToken);
-                }
+                MessageHolder.Dictionary[userId].Add(message.Text);
 
                 bool validDate = false;
                 var messages = MessageHolder.Dictionary[userId];
@@ -345,19 +328,12 @@ namespace Foxminded.Task11
                         Console.WriteLine(ex.Message);
                     }
 
+                    MessageHolder.Dictionary.Remove(userId, out List<string> retrievedValue);
                     message = await botClient.SendTextMessageAsync(
                     chatId: chatId,
                     text: textMessage,
                     replyMarkup: new ReplyKeyboardRemove(),
                                 cancellationToken: cancellationToken);
-                }
-                else
-                {
-                    message = await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: "Something went wrong, you should try again. Don't forget, that bot can't see the future, so enter the date in the past.",
-                    replyMarkup: new ReplyKeyboardRemove(),
-                    cancellationToken: cancellationToken);
                 }
             }
         }
