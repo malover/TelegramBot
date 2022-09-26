@@ -307,8 +307,16 @@ namespace Foxminded.Task11
             else if (temp >= 1 && temp <= 31)
             {
                 var userId = message.From.Id.ToString();
-
-                MessageHolder.Dictionary[userId].Add(message.Text);
+                string dayToAdd = "";
+                if (int.Parse(message.Text) < 10)
+                {
+                    dayToAdd = "0" + message.Text;
+                }
+                else
+                {
+                    dayToAdd = message.Text;
+                }
+                MessageHolder.Dictionary[userId].Add(dayToAdd);
 
                 bool validDate = false;
                 var messages = MessageHolder.Dictionary[userId];
@@ -339,6 +347,7 @@ namespace Foxminded.Task11
                     {
                         Console.WriteLine(ex.Message);
                     }
+                    MessageHolder.Dictionary.Remove(userId, out List<string> retrievedValue);
 
                     message = await botClient.SendTextMessageAsync(
                     chatId: chatId,
@@ -369,6 +378,10 @@ namespace Foxminded.Task11
         public static async Task<string> LoadExchangeRate(string currency, string date)
         {
             var rate = await ProcessExchange.LoadExchange(currency, date);
+            if(rate == null)
+            {
+                return $"The bank does not have info about rates of {currency} at the {date}.";
+            }
             string result = $"Base currency: {rate.BaseCurrency}\n" +
                             $"Exchange currency: {rate.Currency}\n" +
                             $"NBU purchase rate: {rate.PurchaseRateNB}\n" +
