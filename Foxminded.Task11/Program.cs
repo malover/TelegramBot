@@ -94,10 +94,10 @@ namespace Foxminded.Task11
                 MessageHolder.Dictionary.TryAdd(userId, new List<string>());
 
                 int rows = (currencies.Count + 5 - 1) / 5; // 5 is the number of buttons in row
-                int cols = 3;
+                int cols = 5;
                 KeyboardButton[][] universalCurrencyLayout = new KeyboardButton[rows][];
 
-                #region Universal layout for year
+                #region Universal layout for currency
                 for (int i = 0; i < rows; i++)
                 {
                     for (int j = 0; j < cols; j++)
@@ -124,18 +124,12 @@ namespace Foxminded.Task11
                         }
                     }
                 }
-                #endregion
-
-                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-                {
-                 new KeyboardButton[]{ "AUD", "CAD", "CZK", "DKK", "HUF" },
-                 new KeyboardButton[]{ "ILS", "JPY", "LVL", "LTL", "NOK" },
-                 new KeyboardButton[]{ "SKK", "SEK", "CHF", "RUB", "GBP"  },
-                 new KeyboardButton[]{ "USD", "BYR", "EUR", "GEL", "PLZ"  },
-                })
+                ReplyKeyboardMarkup replyKeyboardMarkup = new(universalCurrencyLayout)
                 {
                     ResizeKeyboard = true
                 };
+                #endregion
+
 
                 Message sentMessage = await botClient.SendTextMessageAsync(
                     chatId: chatId,
