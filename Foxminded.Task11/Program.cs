@@ -120,7 +120,7 @@ namespace Foxminded.Task11
                 MessageHolder.Dictionary[userId].Add(message.Text);
 
                 int earliestPossibleYear = 2014;
-                int currentYear = DateTime.Today.Date.Year;
+                int currentYear = DateTime.Today.Year;
                 int rows = ((currentYear - earliestPossibleYear) + 3) / 3; // 3 is the number of buttons in row
                 int cols = 3;
                 KeyboardButton[][] universalYearLayout = new KeyboardButton[rows][];
@@ -187,7 +187,7 @@ namespace Foxminded.Task11
                      "Apr", "May", "Jun",
                      "Jul", "Aug", "Sep",
                      "Oct", "Nov", "Dec"}
-                        .Take(DateTime.Today.Month)
+                        .Take(DateTime.Today.Date.Month)
                         .ToList();
                 }
                 //Count the number of button rows, in order to create a universal layout
@@ -250,9 +250,9 @@ namespace Foxminded.Task11
                 var tempMonth = int.Parse(monthUsingDigit);
                 int daysInChosenMonth = 0;
                 //Then we have to check if user chose current month, to limit days to today
-                if (DateTime.Today.Year == tempYear && DateTime.Today.Month == tempMonth)
+                if (DateTime.Today.Year == tempYear && DateTime.Today.Date.Month == tempMonth)
                 {
-                    daysInChosenMonth = DateTime.Today.Day;
+                    daysInChosenMonth = DateTime.Today.Date.Day;
                 }
                 else
                 {
