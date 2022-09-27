@@ -64,9 +64,9 @@ namespace Foxminded.Task11
             #endregion
             Dictionary<string, string> month = new Dictionary<string, string>()
             {
-                {"Jan", "01" }, {"Feb", "02"}, {"Mar", "03"}, {"Apr", "04"},
-                {"May", "05" }, {"Jun", "06"}, {"Jul", "07"}, {"Aug", "08"},
-                {"Sep", "09" }, {"Oct", "10"}, {"Nov", "11"}, {"Dec", "12"},
+                {"January", "01" }, {"February", "02"}, {"March", "03"}, {"April", "04"},
+                {"May", "05" }, {"June", "06"}, {"July", "07"}, {"August", "08"},
+                {"September", "09" }, {"October", "10"}, {"November", "11"}, {"December", "12"},
             };
 
             var chatId = message.Chat.Id;
@@ -92,6 +92,39 @@ namespace Foxminded.Task11
                 var userId = message.From.Id.ToString();
 
                 MessageHolder.Dictionary.TryAdd(userId, new List<string>());
+
+                int rows = (currencies.Count + 5 - 1) / 5; // 5 is the number of buttons in row
+                int cols = 3;
+                KeyboardButton[][] universalCurrencyLayout = new KeyboardButton[rows][];
+
+                #region Universal layout for year
+                for (int i = 0; i < rows; i++)
+                {
+                    for (int j = 0; j < cols; j++)
+                    {
+                        if (universalCurrencyLayout[i] is null)
+                        {
+                            if (currencies.Count < 5)
+                            {
+                                universalCurrencyLayout[i] = new KeyboardButton[currencies.Count];
+                            }
+                            else
+                            {
+                                universalCurrencyLayout[i] = new KeyboardButton[5];
+                            }
+                        }
+                        if (currencies.Count > 0)
+                        {
+                            universalCurrencyLayout[i][j] = currencies.ElementAt(0);
+                            currencies.RemoveAt(0);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                #endregion
 
                 ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
                 {
@@ -174,19 +207,11 @@ namespace Foxminded.Task11
 
                 #region Create univeral layout for months
                 //Set an array of a full 12 month
-                var monthInYear = new List<string>
-                    {"Jan", "Feb", "Mar",
-                     "Apr", "May", "Jun",
-                     "Jul", "Aug", "Sep",
-                     "Oct", "Nov", "Dec"};
+                List<string> monthInYear = DateTimeFormatInfo.CurrentInfo.MonthNames.ToList();
                 //If user chose a current year, set an array up to the current month
                 if (temp == DateTime.Today.Year)
                 {
-                    monthInYear = new[]
-                    {"Jan", "Feb", "Mar",
-                     "Apr", "May", "Jun",
-                     "Jul", "Aug", "Sep",
-                     "Oct", "Nov", "Dec"}
+                    monthInYear = monthInYear
                         .Take(DateTime.Today.Date.Month)
                         .ToList();
                 }
