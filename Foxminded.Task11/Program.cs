@@ -9,6 +9,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Foxminded.Task11
 {
@@ -20,6 +21,7 @@ namespace Foxminded.Task11
             #region Adding appsettings
             using IHost host = Host.CreateDefaultBuilder(args).Build();
             IConfiguration config = host.Services.GetRequiredService<IConfiguration>();
+
             #endregion
 
             #region Telegram_bot initialization
@@ -40,10 +42,7 @@ namespace Foxminded.Task11
                 receiverOptions: receiverOptions,
                 cancellationToken: cts.Token
                 );
-            #endregion
-            //Api client initialization
-            ApiHelper.InitializeClient();
-
+            #endregion       
 
             Console.ReadLine();
             cts.Cancel();
@@ -58,9 +57,10 @@ namespace Foxminded.Task11
             if (message.Text is not { } messageText)
                 return;
 
-            #region long regex
-            //This regex contains all currency codes available in privatbank api
-            Regex regexCurrency = new Regex(@"^(AUD|CAD|CZK|DKK|HUF|ILS|JPY|LVL|LTL|NOK|SKK|SEK|CHF|GBP|USD|BYR|EUR|GEL|PLZ)$");
+            #region initialize currency codes from appsettings
+            using IHost host = Host.CreateDefaultBuilder().Build();
+            IConfiguration config = host.Services.GetRequiredService<IConfiguration>();
+            var currencies = config.GetSection("Currency:Codes").Get<List<string>>();
             #endregion
             Dictionary<string, string> month = new Dictionary<string, string>()
             {
@@ -113,14 +113,14 @@ namespace Foxminded.Task11
             }
 
             //Set year
-            else if (regexCurrency.IsMatch(message.Text))
+            else if (currencies.Contains(message.Text))
             {
                 var userId = message.From.Id.ToString();
 
                 MessageHolder.Dictionary[userId].Add(message.Text);
 
                 int earliestPossibleYear = 2014;
-                int currentYear = DateTime.Today.Year;
+                int currentYear = DateTime.Today.Date.Year;
                 int rows = ((currentYear - earliestPossibleYear) + 3) / 3; // 3 is the number of buttons in row
                 int cols = 3;
                 KeyboardButton[][] universalYearLayout = new KeyboardButton[rows][];
@@ -378,7 +378,7 @@ namespace Foxminded.Task11
         public static async Task<string> LoadExchangeRate(string currency, string date)
         {
             var rate = await ProcessExchange.LoadExchange(currency, date);
-            if(rate == null)
+            if (rate == null)
             {
                 return $"The bank does not have info about rates of {currency} at the {date}.";
             }
