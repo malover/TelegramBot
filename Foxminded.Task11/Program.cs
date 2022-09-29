@@ -62,14 +62,11 @@ namespace Foxminded.Task11
             IConfiguration config = host.Services.GetRequiredService<IConfiguration>();
             var currencies = config.GetSection("Currency:Codes").Get<List<string>>();
             #endregion
-            Dictionary<string, string> month = new Dictionary<string, string>()
-            {
-                {"January", "01" }, {"February", "02"}, {"March", "03"}, {"April", "04"},
-                {"May", "05" }, {"June", "06"}, {"July", "07"}, {"August", "08"},
-                {"September", "09" }, {"October", "10"}, {"November", "11"}, {"December", "12"},
-            };
 
             var chatId = message.Chat.Id;
+
+            //Set an array of a full 12 month
+            List<string> monthInYear = DateTimeFormatInfo.CurrentInfo.MonthNames.ToList();
 
             int temp = 0;
             int.TryParse(message.Text, out temp);
@@ -200,8 +197,6 @@ namespace Foxminded.Task11
                 MessageHolder.Dictionary[userId].Add(message.Text);
 
                 #region Create univeral layout for months
-                //Set an array of a full 12 month
-                List<string> monthInYear = DateTimeFormatInfo.CurrentInfo.MonthNames.ToList();
                 //If user chose a current year, set an array up to the current month
                 if (temp == DateTime.Today.Year)
                 {
@@ -254,10 +249,10 @@ namespace Foxminded.Task11
                     cancellationToken: cancellationToken);
             }
             //Set day
-            else if (month.ContainsKey(message.Text))
+            else if (monthInYear.Contains(message.Text))
             {
                 var userId = message.From.Id.ToString();
-                string monthUsingDigit = month[message.Text];
+                var monthUsingDigit = DateTime.ParseExact(message.Text, "MMMM", CultureInfo.CurrentCulture).Month.ToString("0#");
 
                 MessageHolder.Dictionary[userId].Add(monthUsingDigit);
 
@@ -415,5 +410,6 @@ namespace Foxminded.Task11
 
             return result;
         }
+
     }
 }
